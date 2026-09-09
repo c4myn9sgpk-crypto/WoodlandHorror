@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Woodland Pasta Bar</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020503;color:#f3e7cf;font-family:Georgia,serif}canvas{display:block;width:100%;height:100%;image-rendering:auto}button{font:inherit;color:#f3e7cf;background:#15231a;border:1px solid #aa9160;border-radius:10px;padding:12px 17px;cursor:pointer;box-shadow:0 5px 20px #0008}button:hover{background:#29412d;transform:translateY(-1px)}
+#menu{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at 50% 42%,#33472f,#0d160f 35%,#020403 78%)}.box{max-width:800px;padding:28px}.eyebrow{text-transform:uppercase;letter-spacing:.22em;opacity:.65;font:14px Arial,sans-serif}.title{font-size:clamp(48px,10vw,104px);line-height:.82;margin:14px 0;text-shadow:0 4px 12px #000,0 0 35px #000}.warning{font:13px Arial,sans-serif;letter-spacing:.12em;opacity:.55;margin:22px}.buttons{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}.tiny{font:12px Arial,sans-serif;opacity:.6;margin-top:18px}
+#hud{position:fixed;inset:0;z-index:5;pointer-events:none;display:none}.bar{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:10px}.panel{background:#08100cdd;border:1px solid #667558;border-radius:10px;padding:9px 12px;box-shadow:0 5px 20px #0008;font:13px Arial,sans-serif}.bar .panel{max-width:47%}#msg{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);width:min(680px,88%);display:none;text-align:center;font-size:15px}#prompt{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);display:none}.cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:20px Arial;opacity:.55}
+#journal,#evidence,#pause{position:absolute;inset:8%;display:none;pointer-events:auto;overflow:auto;background:#09110ddd;border:1px solid #8a7956;border-radius:14px;padding:22px;box-shadow:0 20px 70px #000}.card{background:#122019;border:1px solid #455740;border-radius:9px;padding:12px;margin:8px 0}.heading{color:#d7b76e;font-size:22px;margin-top:0}
+#touch{display:none;position:fixed;inset:0;z-index:10;pointer-events:none}.touchbtn{position:absolute;pointer-events:auto;width:62px;height:62px;border-radius:50%;padding:0;background:#08100cbb;border:1px solid #b99c60}.up{left:74px;bottom:108px}.down{left:74px;bottom:25px}.left{left:8px;bottom:66px}.right{left:140px;bottom:66px}.act{right:24px;bottom:96px}.light{right:24px;bottom:25px}.book{right:96px;bottom:25px}
+@media (max-width:700px){#touch{display:block}.bar{top:max(8px,env(safe-area-inset-top))}.bar .panel{font-size:11px}.tiny{font-size:11px}.title{font-size:50px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="menu"><div class="box"><div class="eyebrow">🌲 Woodland Pasta & Dessert Bar</div><div class="title">WOODLAND<br>PASTA BAR</div><div>Explore. Discover. Survive. Uncover the truth.</div><div class="warning">THE RESTAURANT CLOSED YEARS AGO.<br>SOME THINGS NEVER LEFT.</div><div class="buttons"><button onclick="startGame('child')">🧒 Child Mode</button><button onclick="startGame('night')">🌙 Night Shift</button><button onclick="startGame('detective')">🕵️ Detective Mode</button><button onclick="startGame('story')">📖 Story Mode</button></div><div class="tiny">Desktop: WASD / arrows + mouse • E interact • F flashlight • J journal • ESC pause<br>Mobile: on-screen controls</div></div></div>
+<div id="hud"><div class="bar"><div id="objective" class="panel"></div><div id="stats" class="panel"></div></div><div class="cross">+</div><div id="prompt" class="panel">E • Interact</div><div id="msg" class="panel"></div><div id="journal" class="panel"><h2 class="heading">📖 Journal</h2><div id="journalText"></div><button onclick="toggleJournal()">Close</button></div><div id="evidence" class="panel"><h2 class="heading">🕵️ Evidence Board</h2><div id="evidenceText"></div><button onclick="toggleEvidence()">Close</button></div><div id="pause" class="panel"><h2 class="heading">Paused</h2><p>Take a breath. The woods are still here.</p><button onclick="resume()">Resume</button><button onclick="backMenu()">Main Menu</button></div></div>
+<div id="touch"><button class="touchbtn up" id="up">▲</button><button class="touchbtn down" id="down">▼</button><button class="touchbtn left" id="left">◀</button><button class="touchbtn right" id="right">▶</button><button class="touchbtn act" id="act">E</button><button class="touchbtn light" id="light">☼</button><button class="touchbtn book" id="book">📖</button></div>
+<script>
+'use strict';
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+let W=innerWidth,H=innerHeight,dpr=Math.min(devicePixelRatio||1,2);function resize(){W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
+const map=[
+'########################',
+'#......................#',
+'#..######....######....#',
+'#..#....#....#....#....#',
+'#..#....#....#....#....#',
+'#..#....#....#....#....#',
+'#..#######..#######...#',
+'#......................#',
+'#....#####......#####..#',
+'#....#...#......#...#..#',
+'#....#...#......#...#..#',
+'#....#####......#####..#',
+'#......................#',
+'#..######..........###.#',
+'#..#................#..#',
+'#..#..############..#..#',
+'#......................#',
+'########################'];
+const MW=24,MH=18;
+const rooms={
+ dining:{x:4,y:7,name:'Main Dining Hall'},stage:{x:8,y:4,name:'Woodland Live Stage'},story:{x:15,y:4,name:'Olive’s Storytime Nest'},birthday:{x:20,y:5,name:'Birthday Wing'},back:{x:15,y:9,name:'Backstage / Maintenance'},trails:{x:5,y:16,name:'Woodland Trails'}
+};
+let mode='child',running=false,paused=false,flash=true,time=0,day=1,night=1,roomName='Main Dining Hall';
+let player={x:4.5,y:7.5,a:0};let keys={};let notes=[],evidence=[],inventory=[],found=new Set();let messageTimer=0;let last=performance.now();
+const chars=[
+{name:'Bella Bunny',kind:'bella',x:8.3,y:3.7,home:'stage',hint:'Bella is holding her ukulele. She seems to be listening to something beyond the walls.'},
+{name:'Hazel Deer',kind:'hazel',x:19.3,y:5.2,home:'birthday',hint:'Hazel freezes mid-motion. For one second, she looks toward the backstage hall.'},
+{name:'Rascal Raccoon',kind:'rascal',x:4.8,y:7.7,home:'dining',hint:'Rascal opens his backpack a little. An old employee item is inside.'},
+{name:'Benny Beaver',kind:'benny',x:5.2,y:16.1,home:'trails',hint:'Benny left a muddy trail leading toward a part of the woods staff never mentioned.'},
+{name:'Olive Owl',kind:'olive',x:15.2,y:3.8,home:'story',hint:'Olive turns a storybook page. The next line describes a place inside this restaurant.'}
+];
+const treasures=[{x:3.2,y:7.4,id:'birthday token',text:'A faded birthday token.'},{x:5.4,y:7.2,id:'employee badge',text:'An old employee badge.'},{x:6.4,y:7.8,id:'blue ribbon',text:'A blue ribbon with a woodland logo.'}];
+const clues={
+child:[['Rascal’s Backpack','The backpack keeps collecting things nobody remembers giving him.'],['Olive’s Story','A story about a lost child contains a real hallway.'],['Hazel’s Pause','Hazel stops whenever someone mentions Ava.']],
+night:[['Security Log','A powered-down stage camera briefly shows movement.'],['Maintenance Note','A missing tape is listed twice under different dates.'],['Storage Room C','Old company records were never moved.']],
+detective:[['Case File','The original report says Ava wandered away.'],['Employee Statements','Former staff disagree about what happened backstage.'],['Deleted Footage','A gap begins immediately after Ava follows Hazel.']],
+story:[['Memory Fragment','Ava knew the restaurant better than anyone.'],['Last Party','The staff became nervous as closing time approached.'],['Echoes','The animatronics remember pieces the humans tried to erase.']]
+};
+function cell(x,y){return map[Math.floor(y)]?.[Math.floor(x)]||'#'}
+function wall(x,y){return cell(x,y)==='#'}
+function startGame(m){mode=m;running=true;paused=false;flash=m!=='child';day=1;night=1;notes=[];evidence=[];inventory=[];found=new Set();player={x:4.5,y:7.5,a:0};document.getElementById('menu').style.display='none';document.getElementById('hud').style.display='block';showMessage(mode==='child'?'Day 1 — Welcome to Woodland. Find Rascal’s three treasures.':mode==='night'?'Night 1 — Restore the dining hall power.':mode==='detective'?'Day 1 — Reopen the cold case. Inspect the restaurant.':'Chapter 1 — Opening Day. Explore the restaurant.',5000);updateUI();}
+function backMenu(){running=false;paused=false;document.getElementById('hud').style.display='none';document.getElementById('menu').style.display='flex'}
+function resume(){paused=false;document.getElementById('pause').style.display='none'}
+function pause(){if(!running)return;paused=true;document.getElementById('pause').style.display='block'}
+function showMessage(t,ms=3200){const el=document.getElementById('msg');el.textContent=t;el.style.display='block';messageTimer=ms}
+function addNote(title,text){if(!notes.some(n=>n[0]===title)){notes.push([title,text]);showMessage('Journal updated: '+title,2500)}}
+function addEvidence(title,text){if(!evidence.some(n=>n[0]===title)){evidence.push([title,text]);showMessage('Evidence collected: '+title,2500)}}
+function updateUI(){let obj=mode==='child'?'Find Rascal’s three treasures':mode==='night'?'Restore systems and recover records':mode==='detective'?'Build the Ava Woodland evidence board':'Explore the memories of Woodland Pasta Bar';document.getElementById('objective').textContent='🎯 '+obj;document.getElementById('stats').innerHTML='📍 '+roomName+' &nbsp;|&nbsp; '+(mode==='night'?'Night '+night:'Day '+day)+' &nbsp;|&nbsp; '+(flash?'🔦':'🌑');}
+function toggleJournal(){let p=document.getElementById('journal');if(p.style.display==='block'){p.style.display='none';return}document.getElementById('journalText').innerHTML=(notes.length?notes.map(n=>`<div class="card"><b>${n[0]}</b><br>${n[1]}</div>`).join(''):'<p>No journal entries yet.</p>');p.style.display='block'}
+function toggleEvidence(){let p=document.getElementById('evidence');if(p.style.display==='block'){p.style.display='none';return}document.getElementById('evidenceText').innerHTML=(evidence.length?evidence.map(n=>`<div class="card"><b>${n[0]}</b><br>${n[1]}</div>`).join(''):'<p>No evidence collected yet.</p>');p.style.display='block'}
+function nearest(){let best=null,bd=99;for(const q of [...chars,...treasures.map(t=>({...t,name:t.id,kind:'treasure'}))]){let d=Math.hypot(player.x-q.x,player.y-q.y);if(d<2.0&&d<bd){best=q;bd=d}}return best}
+function interact(){if(!running||paused)return;let q=nearest();if(!q){showMessage('Nothing nearby. The restaurant is quiet.');return}if(q.kind==='treasure'){if(found.has(q.id))return;found.add(q.id);inventory.push(q.id);addNote('Rascal’s Treasure',q.text);if(found.size===3){addEvidence('The Backpack Items','Three unrelated objects are connected to former employees.');showMessage('You found all three treasures. Rascal is suddenly gone.');}return}const ch=chars.find(x=>x===q);if(!ch)return;addNote(ch.name,ch.hint);if(mode==='detective'){addEvidence(ch.name,ch.hint)}if(ch.kind==='olive'){addNote('LostStory.mp4','Olive’s story points toward the east hallway and a missing final page.')}if(ch.kind==='bella'&&mode==='night'){addEvidence('Bella Audio','Unprogrammed sounds appear in Bella’s memory bank.')}if(ch.kind==='hazel'){addEvidence('Hazel Memory','Hazel repeatedly returns to the backstage hallway.')}if(ch.kind==='benny'){addEvidence('Benny Trail','Mud and leaves appear where Benny should not be able to go.')}if(ch.kind==='rascal'){addEvidence('Rascal Backpack','Items disappear from staff areas and later appear in his backpack.')}showMessage(ch.hint,5000);}
+function roomUpdate(){let best='Main Dining Hall',bd=999;for(const k in rooms){let d=Math.hypot(player.x-rooms[k].x,player.y-rooms[k].y);if(d<bd){bd=d;best=rooms[k].name}}if(best!==roomName){roomName=best;updateUI();}}
+function move(dt){let speed=(keys.shift?3.4:2.25);if(mode==='night')speed=2.15;let f=(keys.w?1:0)-(keys.s?1:0),s=(keys.d?1:0)-(keys.a?1:0);if(keys.ArrowUp)f=1;if(keys.ArrowDown)f=-1;if(keys.ArrowLeft)s=-1;if(keys.ArrowRight)s=1;if(!f&&!s)return;let len=Math.hypot(f,s)||1;f/=len;s/=len;let nx=player.x+(Math.cos(player.a)*f+Math.cos(player.a+Math.PI/2)*s)*speed*dt;let ny=player.y+(Math.sin(player.a)*f+Math.sin(player.a+Math.PI/2)*s)*speed*dt;if(!wall(nx,player.y))player.x=nx;if(!wall(player.x,ny))player.y=ny;roomUpdate()}
+function castRay(a){let sin=Math.sin(a),cos=Math.cos(a),dist=0;while(dist<24){dist+=.025;if(wall(player.x+cos*dist,player.y+sin*dist))break}return dist}
+function drawWorld(){ctx.fillStyle=mode==='child'?'#263c2b':'#111914';ctx.fillRect(0,0,W,H/2);ctx.fillStyle=mode==='child'?'#4b4a35':'#171c16';ctx.fillRect(0,H/2,W,H/2);const FOV=Math.PI/3,rays=Math.min(Math.floor(W/2),480),step=W/rays;for(let i=0;i<rays;i++){let x=i*step;let a=player.a-FOV/2+FOV*(i/rays);let d=castRay(a)*Math.cos(a-player.a);let h=Math.min(H*2,H/(d+.01));let shade=Math.max(20,135-d*9);ctx.fillStyle=`rgb(${shade*.62|0},${shade*.78|0},${shade*.56|0})`;ctx.fillRect(x,H/2-h/2,step+1,h)}drawObjects(FOV,rays,step)}
+function drawObjects(FOV,rays,step){let arr=[];for(const q of [...chars,...treasures]){let dx=q.x-player.x,dy=q.y-player.y,d=Math.hypot(dx,dy),ang=Math.atan2(dy,dx)-player.a;while(ang<-Math.PI)ang+=Math.PI*2;while(ang>Math.PI)ang-=Math.PI*2;if(Math.abs(ang)<FOV/2+.25)arr.push({q,d,ang})}arr.sort((a,b)=>b.d-a.d);for(const o of arr){let size=Math.min(H*1.1,H/(o.d+.15)*.75),sx=W/2+(o.ang/(FOV/2))*(W/2);if(sx<-size||sx>W+size)continue;drawSprite(o.q,sx,H/2,size,o.d)}}
+function drawSprite(q,x,y,size,d){ctx.save();ctx.translate(x,y);ctx.globalAlpha=Math.max(.35,Math.min(1,1-d/12));if(q.kind==='treasure'){ctx.fillStyle='#d2b16b';ctx.fillRect(-size*.16,-size*.16,size*.32,size*.32);ctx.strokeStyle='#f0d894';ctx.strokeRect(-size*.16,-size*.16,size*.32,size*.32);ctx.restore();return}let s=size;let body=q.kind==='bella'?'#d995b6':q.kind==='hazel'?'#9b7650':q.kind==='rascal'?'#68606a':q.kind==='benny'?'#806346':'#9a9a73';ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(0,s*.1,s*.28,s*.34,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b89a75';ctx.beginPath();ctx.arc(0,-s*.2,s*.25,0,Math.PI*2);ctx.fill();if(q.kind==='bella'){ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(-s*.14,-s*.55,s*.09,s*.28,-.15,0,Math.PI*2);ctx.ellipse(s*.14,-s*.55,s*.09,s*.28,.15,0,Math.PI*2);ctx.fill()}if(q.kind==='hazel'){ctx.strokeStyle='#7b5c38';ctx.lineWidth=Math.max(2,s*.025);ctx.beginPath();ctx.moveTo(-s*.15,-s*.45);ctx.lineTo(-s*.28,-s*.62);ctx.moveTo(s*.15,-s*.45);ctx.lineTo(s*.28,-s*.62);ctx.stroke()}if(q.kind==='rascal'){ctx.fillStyle='#222';ctx.beginPath();ctx.arc(-s*.1,-s*.22,s*.045,0,Math.PI*2);ctx.arc(s*.1,-s*.22,s*.045,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#bbb';ctx.lineWidth=Math.max(2,s*.02);ctx.beginPath();ctx.moveTo(-s*.27,-s*.08);ctx.lineTo(s*.27,-s*.08);ctx.stroke()}if(q.kind==='benny'){ctx.fillStyle='#4f3525';ctx.fillRect(-s*.32,s*.18,s*.64,s*.12)}if(q.kind==='olive'){ctx.fillStyle='#171717';ctx.beginPath();ctx.arc(-s*.1,-s*.22,s*.05,0,Math.PI*2);ctx.arc(s*.1,-s*.22,s*.05,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#111';ctx.beginPath();ctx.arc(0,-s*.12,s*.045,0,Math.PI*2);ctx.fill();ctx.restore()}
+function drawOverlay(){if(flash){let g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.08,W/2,H/2,Math.max(W,H)*.72);g.addColorStop(0,'transparent');g.addColorStop(.65,'rgba(0,0,0,.12)');g.addColorStop(1,'rgba(0,0,0,.72)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}else{ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,W,H)}if(mode==='night'&&Math.random()<.004){ctx.fillStyle='#eee8d0';ctx.globalAlpha=.04;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1}}
+function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;if(running&&!paused){time+=dt*1000;move(dt);drawWorld();drawOverlay();let q=nearest();document.getElementById('prompt').style.display=q?'block':'none';if(messageTimer>0){messageTimer-=dt*1000;if(messageTimer<=0)document.getElementById('msg').style.display='none'}if(mode==='night'&&time>90000){night++;time=0;addEvidence('Night '+night,'Another night reveals another piece of the restaurant.');showMessage('6:00 AM. You made it through. The records are still here.',5000);updateUI()}}requestAnimationFrame(loop)}requestAnimationFrame(loop);
+addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('journal').style.display==='block'||document.getElementById('evidence').style.display==='block'){toggleJournal();toggleEvidence();return}paused?resume():pause()}if(e.key.toLowerCase()==='j')toggleJournal();if(e.key.toLowerCase()==='f'){flash=!flash;updateUI()}if(e.key.toLowerCase()==='e')interact();keys[e.key]=true;keys[e.key.toLowerCase()]=true});addEventListener('keyup',e=>{keys[e.key]=false;keys[e.key.toLowerCase()]=false});
+let dragging=false,lastX=0;addEventListener('pointerdown',e=>{if(e.target.tagName==='BUTTON')return;dragging=true;lastX=e.clientX});addEventListener('pointerup',()=>dragging=false);addEventListener('pointermove',e=>{if(!dragging||paused||!running)return;player.a+=(e.clientX-lastX)*.004;lastX=e.clientX});
+function hold(id,k){let el=document.getElementById(id);['pointerdown','touchstart'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();keys[k]=true}));['pointerup','pointercancel','touchend','touchcancel'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();keys[k]=false}))}hold('up','w');hold('down','s');hold('left','a');hold('right','d');document.getElementById('act').onclick=interact;document.getElementById('light').onclick=()=>{flash=!flash;updateUI()};document.getElementById('book').onclick=toggleJournal;
+// Tiny scripted progression so the prototype always has something to do.
+setInterval(()=>{if(!running||paused)return;if(mode==='child'&&found.size===3&&day===1){day=2;addNote('Day 2','The birthday wing feels different after closing.');showMessage('Day 2 unlocked — Birthday Celebration.',5000);updateUI()}if(mode==='detective'&&evidence.length>=3&&day===1){day=2;showMessage('Day 2 unlocked — Former Employees.',5000);updateUI()}},1500);
+</script>
+</body>
+</html>
